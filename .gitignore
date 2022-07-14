@@ -8,6 +8,8 @@ venv/
 .vscode/
 
 # Tests files and folders
+test.py
+tests.ipynb
 
 # Byte-compiled files
 __pycache__/

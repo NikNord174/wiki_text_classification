@@ -1,2 +1,4 @@
-torch==1.13.0.dev20220713
+torch==1.12
 torchtext==0.13.0
+gensim==4.2.0
+nltk==3.7
