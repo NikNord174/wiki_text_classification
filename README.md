@@ -1,4 +1,4 @@
-# Text classification based on Wikipedia
+# Text classification based on Wikipedia corpus
 
 ## Description
 
