@@ -7,7 +7,7 @@ The project is aimed to classify Wikipedia articles by category such as science,
 ## Getting started
 The project is made using Python 3.8.9 Other necessary packajes are noticed in requirements.txt.
 
-First, clone the repository from Github and switch to the new directory:
+To run the code, firstly, clone the repository from Github and switch to the new directory:
 
     $ git clone git@github.com/USERNAME/wiki_text_classification.git
     $ cd wiki_text_classification
