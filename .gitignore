@@ -8,11 +8,6 @@ venv/
 .vscode/
 
 # Tests files and folders
-tests.py
-t.ipynb
-Autoencoder_old.ipynb
 
 # Byte-compiled files
 __pycache__/
-losses/__pycache__/
-models/__pycache__/
