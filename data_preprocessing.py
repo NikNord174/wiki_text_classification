@@ -1,8 +1,9 @@
 import re
 import json
 import nltk
+import torch
 
-from typing import List, Callable, Union
+from typing import List, Set, Callable, Union
 from gensim import corpora
 from pymystem3 import Mystem
 from torch.utils.data import Dataset, DataLoader
@@ -10,22 +11,39 @@ from torchtext.data.utils import get_tokenizer
 from torch.utils.data.dataset import random_split
 from nltk.corpus import stopwords
 
+nltk.download('stopwords')
+russian_stopwords = stopwords.words('russian')
 
+
+# set constants
 BATCH_SIZE = 500
 DATA_PATH = '/Users/nikolai/Downloads/mini_wiki_cats.jsonl(1)'
 
 
-# data import
-with open(DATA_PATH, 'r') as json_file:
-    json_list = list(json_file)
-wiki_corpus = [
-    [json.loads(json_str).get('text'),
-        json.loads(json_str).get('cats')[0]]
-    for json_str in json_list]
+def data_import(data_path: str) -> List:
+    """Import data from file."""
+    with open(data_path, 'r') as json_file:
+        return list(json_file)
 
 
-nltk.download('stopwords')
-russian_stopwords = stopwords.words('russian')
+def get_corpus() -> List:
+    """Get corpus: list with text and label only."""
+    wiki_corpus = [
+        [json.loads(json_str).get('text'),
+            json.loads(json_str).get('cats')[0]]
+        for json_str in json_list]
+    return wiki_corpus
+
+
+def cats_set(json_list: List) -> Set:
+    """Get set of categories."""
+    categories = []
+    for json_str in json_list:
+        result = json.loads(json_str)
+        categories.append(result['cats'][0])
+    return set(categories)
+
+
 mystem = Mystem()
 tokenizer = get_tokenizer(tokenizer=None)
 
@@ -46,16 +64,45 @@ def tokenize(text: str, tokenizer: Callable[[str], List] = tokenizer) -> List:
     return clean_doc
 
 
-class Wiki_Dataset(Dataset):
-    def __init__(self, data: List = wiki_corpus) -> None:
+def make_bow_vector(sentence, dict):
+    """Make vector with ones and zeros like [1., 1., 0., 0., 1.]"""
+    vec = torch.zeros(len(dict))
+    for word in sentence:
+        vec[dict[word]] += 1
+    return vec.view(1, -1)
+
+
+class Wiki_Dataset_BoW(Dataset):
+    def __init__(self, data: List) -> None:
         tokenizer = get_tokenizer(tokenizer=None)
         self.corpus = [tokenize(article[0], tokenizer) for article in data]
-        dicts = [corpora.Dictionary([doc]) for doc in self.corpus]
-        counted_dicts = [dict.token2id for dict in dicts]
-        self.bow_corpus = [dict.doc2bow(
-            counted_dict
-        ) for counted_dict, dict in zip(counted_dicts, dicts)]
-        self.labels = [article[1] for article in data]
+        great_dictionary = corpora.Dictionary(self.corpus)
+        self.bow_corpus = [make_bow_vector(
+            doc, great_dictionary)for doc in self.corpus]
+        cats_dict = {cat: i for cat, i in zip(
+            categories, range(len(categories)))}
+        self.labels = [cats_dict.get(article[1]) for article in data]
+
+    def __len__(self) -> int:
+        return len(self.labels)
+
+    def __getitem__(self, i) -> Union[List, List, int]:
+        return (
+            self.corpus[i],
+            self.bow_corpus[i],
+            self.labels[i],
+        )
+
+
+class Wiki_Dataset_BoW_Vector(Dataset):
+    def __init__(self, data: List) -> None:
+        tokenizer = get_tokenizer(tokenizer=None)
+        self.corpus = [tokenize(article[0], tokenizer) for article in data]
+        great_dict = corpora.Dictionary(self.corpus)
+        self.bow_corpus = [great_dict.doc2bow(doc) for doc in self.corpus]
+        cats_dict = {cat: i for cat, i in zip(
+            categories, range(len(categories)))}
+        self.labels = [cats_dict.get(article[1]) for article in data]
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -69,7 +116,7 @@ class Wiki_Dataset(Dataset):
 
 
 def split_train_valid_test(corpus: Dataset, valid_ratio: float = 0.1,
-                           test_ratio: float = 0.1):
+                           test_ratio: float = 0.1) -> List:
     """Split dataset into train, validation, and test."""
     test_length = int(len(corpus) * test_ratio)
     valid_length = int(len(corpus) * valid_ratio)
@@ -79,11 +126,30 @@ def split_train_valid_test(corpus: Dataset, valid_ratio: float = 0.1,
     )
 
 
+# import data from file
+json_list = data_import(DATA_PATH)
+# create corpus
+wiki_corpus = get_corpus()
+# get categories
+categories = cats_set(json_list)
+# create dataset
+dataset = Wiki_Dataset_BoW_Vector(wiki_corpus)
+# split dataset into three parts
 train_dataset, valid_dataset, test_dataset = split_train_valid_test(
-    Wiki_Dataset, valid_ratio=0.1, test_ratio=0.1
+    Wiki_Dataset_BoW_Vector, valid_ratio=0.1, test_ratio=0.1
 )
-
-
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
-valid_loader = DataLoader(valid_dataset, batch_size=BATCH_SIZE)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=BATCH_SIZE,
+    collate_fn=lambda x: x
+    )
+valid_loader = DataLoader(
+    valid_dataset,
+    batch_size=BATCH_SIZE,
+    collate_fn=lambda x: x
+    )
+test_loader = DataLoader(
+    test_dataset,
+    batch_size=BATCH_SIZE,
+    collate_fn=lambda x: x
+    )

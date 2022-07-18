@@ -13,3 +13,6 @@ tests.ipynb
 
 # Byte-compiled files
 __pycache__/
+
+# Other files
+.DS_Store

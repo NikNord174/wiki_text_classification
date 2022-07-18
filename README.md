@@ -24,4 +24,5 @@ and instal all requirements using
 
     $ pip3 install -r requirements.txt
 
-Enjoy!:)
+To load the dataset, you need to notice the path to data in *data_preprocessing.py*
+It is anticipated that data is stored in .json (or .jsonl) file. In other cases, you need to change a little initial code in the *data_import* function in *data_preprocessing.py*

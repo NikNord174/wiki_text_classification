@@ -1,30 +1,22 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-class FeedfowardTextClassifier(nn.Module):
+class Linear_Classifier(nn.Module):
     def __init__(
         self,
-        device,
-        vocab_size,
-        hidden1,
-        hidden2,
-        num_labels,
-        batch_size
-    ):
-        super(FeedfowardTextClassifier, self).__init__()
-        self.device = device
-        self.batch_size = batch_size
-        self.fc1 = nn.Linear(vocab_size, hidden1)
-        self.fc2 = nn.Linear(hidden1, hidden2)
-        self.fc3 = nn.Linear(hidden2, num_labels)
+        vocab_size: int = 129435,
+        num_labels: int = 13
+    ) -> None:
+        super(Linear_Classifier, self).__init__()
+        fc1 = nn.Linear(vocab_size, vocab_size//10)
+        fc2 = nn.Linear(vocab_size//10, vocab_size//100)
+        fc3 = nn.Linear(vocab_size//100, vocab_size//1000)
+        fc4 = nn.Linear(vocab_size//1000, num_labels)
+        leaky_relu = nn.LeakyReLU(0.2)
+        self.model = nn.Sequential(
+            fc1, leaky_relu, fc2, leaky_relu, fc3, leaky_relu, fc4)
 
     def forward(self, x):
-        batch_size = len(x)
-        if batch_size != self.batch_size:
-            self.batch_size = batch_size
-        x = torch.FloatTensor(x)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        return torch.sigmoid(self.fc3(x))
+        output = self.model(x)
+        return F.log_softmax(output, dim=1)
