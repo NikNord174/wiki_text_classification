@@ -1,5 +1,6 @@
 import re
 import json
+import pickle
 import nltk
 import torch
 
@@ -11,12 +12,13 @@ from torchtext.data.utils import get_tokenizer
 from torch.utils.data.dataset import random_split
 from nltk.corpus import stopwords
 
-nltk.download('stopwords')
+nltk.download('stopwords')  # в мэин ран бефоре
 russian_stopwords = stopwords.words('russian')
 
 
 # set constants
 BATCH_SIZE = 500
+# файл конфиг или параметр ком строки
 DATA_PATH = '/Users/nikolai/Downloads/mini_wiki_cats.jsonl(1)'
 
 
@@ -44,7 +46,7 @@ def cats_set(json_list: List) -> Set:
     return set(categories)
 
 
-mystem = Mystem()
+mystem = Mystem()  # не в теле функции
 tokenizer = get_tokenizer(tokenizer=None)
 
 
@@ -68,7 +70,7 @@ def make_bow_vector(sentence, dict):
     """Make vector with ones and zeros like [1., 1., 0., 0., 1.]"""
     vec = torch.zeros(len(dict))
     for word in sentence:
-        vec[dict[word]] += 1
+        vec[dict.token2id[word]] += 1
     return vec.view(1, -1)
 
 
@@ -77,8 +79,10 @@ class Wiki_Dataset_BoW(Dataset):
         tokenizer = get_tokenizer(tokenizer=None)
         self.corpus = [tokenize(article[0], tokenizer) for article in data]
         great_dictionary = corpora.Dictionary(self.corpus)
-        self.bow_corpus = [make_bow_vector(
-            doc, great_dictionary)for doc in self.corpus]
+        self.bow_corpus = [
+            make_bow_vector(doc, great_dictionary) for doc in self.corpus]
+        # get categories and labels
+        categories = cats_set(json_list)
         cats_dict = {cat: i for cat, i in zip(
             categories, range(len(categories)))}
         self.labels = [cats_dict.get(article[1]) for article in data]
@@ -88,28 +92,6 @@ class Wiki_Dataset_BoW(Dataset):
 
     def __getitem__(self, i) -> Union[List, List, int]:
         return (
-            self.corpus[i],
-            self.bow_corpus[i],
-            self.labels[i],
-        )
-
-
-class Wiki_Dataset_BoW_Vector(Dataset):
-    def __init__(self, data: List) -> None:
-        tokenizer = get_tokenizer(tokenizer=None)
-        self.corpus = [tokenize(article[0], tokenizer) for article in data]
-        great_dict = corpora.Dictionary(self.corpus)
-        self.bow_corpus = [great_dict.doc2bow(doc) for doc in self.corpus]
-        cats_dict = {cat: i for cat, i in zip(
-            categories, range(len(categories)))}
-        self.labels = [cats_dict.get(article[1]) for article in data]
-
-    def __len__(self) -> int:
-        return len(self.labels)
-
-    def __getitem__(self, i) -> Union[List, List, int]:
-        return (
-            self.corpus[i],
             self.bow_corpus[i],
             self.labels[i],
         )
@@ -126,17 +108,21 @@ def split_train_valid_test(corpus: Dataset, valid_ratio: float = 0.1,
     )
 
 
-# import data from file
-json_list = data_import(DATA_PATH)
-# create corpus
-wiki_corpus = get_corpus()
-# get categories
-categories = cats_set(json_list)
+if __name__ == '__main__':
+    # import data from file
+    json_list = data_import(DATA_PATH)
+    # create corpus
+    wiki_corpus = get_corpus()
+    with open('.data/wiki_corpus.pickle', 'wb') as f:
+        pickle.dump(wiki_corpus, f)
+
+
+'''
 # create dataset
-dataset = Wiki_Dataset_BoW_Vector(wiki_corpus)
+dataset = Wiki_Dataset_BoW(wiki_corpus)
 # split dataset into three parts
 train_dataset, valid_dataset, test_dataset = split_train_valid_test(
-    Wiki_Dataset_BoW_Vector, valid_ratio=0.1, test_ratio=0.1
+    dataset, valid_ratio=0.1, test_ratio=0.1
 )
 train_loader = DataLoader(
     train_dataset,
@@ -152,4 +138,4 @@ test_loader = DataLoader(
     test_dataset,
     batch_size=BATCH_SIZE,
     collate_fn=lambda x: x
-    )
+    )'''
