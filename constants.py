@@ -7,5 +7,6 @@ else:
     device = torch.device('cpu')
 
 
-epochs = 100
+BATCH_SIZE = 500
+epochs = 10
 lr = 1e-3

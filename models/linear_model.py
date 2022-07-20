@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -5,7 +6,7 @@ import torch.nn.functional as F
 class Linear_Classifier(nn.Module):
     def __init__(
         self,
-        vocab_size: int = 129435,
+        vocab_size: int = 153739,
         num_labels: int = 13
     ) -> None:
         super(Linear_Classifier, self).__init__()
@@ -17,6 +18,6 @@ class Linear_Classifier(nn.Module):
         self.model = nn.Sequential(
             fc1, leaky_relu, fc2, leaky_relu, fc3, leaky_relu, fc4)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         output = self.model(x)
         return F.log_softmax(output, dim=1)

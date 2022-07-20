@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import pickle
@@ -12,14 +13,19 @@ from torchtext.data.utils import get_tokenizer
 from torch.utils.data.dataset import random_split
 from nltk.corpus import stopwords
 
-nltk.download('stopwords')  # в мэин ран бефоре
+import constants
+
+
+nltk.download('stopwords')
 russian_stopwords = stopwords.words('russian')
 
 
-# set constants
-BATCH_SIZE = 500
-# файл конфиг или параметр ком строки
+mystem = Mystem()
+tokenizer = get_tokenizer(tokenizer=None)
+
+
 DATA_PATH = '/Users/nikolai/Downloads/mini_wiki_cats.jsonl(1)'
+DIRECTORY = './.data/'
 
 
 def data_import(data_path: str) -> List:
@@ -28,7 +34,7 @@ def data_import(data_path: str) -> List:
         return list(json_file)
 
 
-def get_corpus() -> List:
+def get_corpus(json_list: List) -> List:
     """Get corpus: list with text and label only."""
     wiki_corpus = [
         [json.loads(json_str).get('text'),
@@ -37,23 +43,17 @@ def get_corpus() -> List:
     return wiki_corpus
 
 
-def cats_set(json_list: List) -> Set:
+def cats_set(wiki_data: List) -> Set:
     """Get set of categories."""
     categories = []
-    for json_str in json_list:
-        result = json.loads(json_str)
-        categories.append(result['cats'][0])
+    for article in wiki_data:
+        categories.append(article[1])
     return set(categories)
-
-
-mystem = Mystem()  # не в теле функции
-tokenizer = get_tokenizer(tokenizer=None)
 
 
 def tokenize(text: str, tokenizer: Callable[[str], List] = tokenizer) -> List:
     """Tokenize docunent."""
     clean_text = re.sub(r'[^\w\s]', '', text)
-    clean_text = re.sub(r'[^\sА-Яа-я]', '', clean_text)
     clean_text = clean_text.lower()
     tokenized_text = tokenizer(clean_text)
     lemmatized_text = [mystem.lemmatize(token)[0] for token in tokenized_text]
@@ -75,6 +75,7 @@ def make_bow_vector(sentence, dict):
 
 
 class Wiki_Dataset_BoW(Dataset):
+    """Create dataset with BoW vectors and labels."""
     def __init__(self, data: List) -> None:
         tokenizer = get_tokenizer(tokenizer=None)
         self.corpus = [tokenize(article[0], tokenizer) for article in data]
@@ -82,7 +83,7 @@ class Wiki_Dataset_BoW(Dataset):
         self.bow_corpus = [
             make_bow_vector(doc, great_dictionary) for doc in self.corpus]
         # get categories and labels
-        categories = cats_set(json_list)
+        categories = cats_set(data)
         cats_dict = {cat: i for cat, i in zip(
             categories, range(len(categories)))}
         self.labels = [cats_dict.get(article[1]) for article in data]
@@ -108,34 +109,55 @@ def split_train_valid_test(corpus: Dataset, valid_ratio: float = 0.1,
     )
 
 
-if __name__ == '__main__':
-    # import data from file
+class MyCustomUnpickler(pickle.Unpickler):
+    """Helps to load data from file as a module."""
+    def find_class(self, module, name):
+        if module == "__main__":
+            module = "data_preprocessing"
+        return super().find_class(module, name)
+
+
+def make_corpus() -> None:
+    """Load data, make corpus and save it locally."""
     json_list = data_import(DATA_PATH)
-    # create corpus
-    wiki_corpus = get_corpus()
+    wiki_corpus = get_corpus(json_list)
+    if not os.path.exists(DIRECTORY):
+        os.mkdir(DIRECTORY)
     with open('.data/wiki_corpus.pickle', 'wb') as f:
         pickle.dump(wiki_corpus, f)
 
 
-'''
-# create dataset
-dataset = Wiki_Dataset_BoW(wiki_corpus)
-# split dataset into three parts
+def create_dataset() -> None:
+    """Create dataset and save it locally."""
+    with open('.data/wiki_corpus.pickle', 'rb') as f:
+        wiki_corpus = pickle.load(f)
+    dataset = Wiki_Dataset_BoW(wiki_corpus[:2000])
+    if not os.path.exists(DIRECTORY):
+        os.mkdir(DIRECTORY)
+    with open('.data/dataset.pickle', 'wb') as f:
+        pickle.dump(dataset, f)
+
+
+if not os.path.exists('.data/wiki_corpus.pickle'):
+    make_corpus()
+if not os.path.exists('.data/dataset.pickle'):
+    create_dataset()
+with open('.data/dataset.pickle', 'rb') as f:
+    unpickler = MyCustomUnpickler(f)
+    dataset = unpickler.load()
+vocab_size = dataset[0][0].size()[1]
 train_dataset, valid_dataset, test_dataset = split_train_valid_test(
     dataset, valid_ratio=0.1, test_ratio=0.1
 )
 train_loader = DataLoader(
     train_dataset,
-    batch_size=BATCH_SIZE,
-    collate_fn=lambda x: x
+    batch_size=constants.BATCH_SIZE,
     )
 valid_loader = DataLoader(
     valid_dataset,
-    batch_size=BATCH_SIZE,
-    collate_fn=lambda x: x
+    batch_size=constants.BATCH_SIZE,
     )
 test_loader = DataLoader(
     test_dataset,
-    batch_size=BATCH_SIZE,
-    collate_fn=lambda x: x
-    )'''
+    batch_size=constants.BATCH_SIZE,
+   )
