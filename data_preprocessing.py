@@ -5,6 +5,7 @@ import pickle
 import nltk
 import torch
 
+from argparse import ArgumentParser
 from typing import List, Set, Callable, Union
 from gensim import corpora
 from pymystem3 import Mystem
@@ -16,20 +17,24 @@ from nltk.corpus import stopwords
 import constants
 
 
-nltk.download('stopwords')
+if not os.path.exists('./venv/lib/nltk_data'):
+    nltk.download('stopwords', download_dir='./venv/lib/nltk_data')
 russian_stopwords = stopwords.words('russian')
 
 
 mystem = Mystem()
 tokenizer = get_tokenizer(tokenizer=None)
 
-
-DATA_PATH = '/Users/nikolai/Downloads/mini_wiki_cats.jsonl(1)'
-DIRECTORY = './.data/'
+DATASET_DIRECTORY = './.data/'
 
 
-def data_import(data_path: str) -> List:
+def data_import():
     """Import data from file."""
+    parser = ArgumentParser()
+    parser.add_argument(
+        "-i", "--input", nargs="?", const='./mini_wiki_cats.jsonl',
+    )
+    data_path = str(parser.parse_args().input)
     with open(data_path, 'r') as json_file:
         return list(json_file)
 
@@ -119,10 +124,10 @@ class MyCustomUnpickler(pickle.Unpickler):
 
 def make_corpus() -> None:
     """Load data, make corpus and save it locally."""
-    json_list = data_import(DATA_PATH)
+    json_list = data_import()
     wiki_corpus = get_corpus(json_list)
-    if not os.path.exists(DIRECTORY):
-        os.mkdir(DIRECTORY)
+    if not os.path.exists(DATASET_DIRECTORY):
+        os.mkdir(DATASET_DIRECTORY)
     with open('.data/wiki_corpus.pickle', 'wb') as f:
         pickle.dump(wiki_corpus, f)
 
@@ -132,8 +137,8 @@ def create_dataset() -> None:
     with open('.data/wiki_corpus.pickle', 'rb') as f:
         wiki_corpus = pickle.load(f)
     dataset = Wiki_Dataset_BoW(wiki_corpus[:2000])
-    if not os.path.exists(DIRECTORY):
-        os.mkdir(DIRECTORY)
+    if not os.path.exists(DATASET_DIRECTORY):
+        os.mkdir(DATASET_DIRECTORY)
     with open('.data/dataset.pickle', 'wb') as f:
         pickle.dump(dataset, f)
 
