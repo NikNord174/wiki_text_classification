@@ -7,6 +7,9 @@ from torch.utils.data import DataLoader
 from data_preprocessing import vocab_size
 from metrics.accuracy import accuracy
 
+vector_size = vocab_size
+metric = accuracy
+
 
 def train(model: nn.Sequential,
           device: torch.device,
@@ -14,9 +17,9 @@ def train(model: nn.Sequential,
           optimizer,
           criterion) -> None:
     model.train()
-    for bow_vectors, labels in train_loader:
-        bow_vectors = bow_vectors.view(-1, vocab_size).to(device)
-        labels = labels.to(device)
+    for data in train_loader:
+        bow_vectors = data[0].view(-1, vector_size).to(device)
+        labels = data[1].to(device)
         optimizer.zero_grad()
         output = model(bow_vectors)
         labels = labels.long()
@@ -34,7 +37,7 @@ def test(model: nn.Sequential,
     acc = 0
     with torch.no_grad():
         for bow_vectors, labels in test_loader:
-            bow_vectors = bow_vectors.view(-1, vocab_size).to(device)
+            bow_vectors = bow_vectors.view(-1, vector_size).to(device)
             labels = labels.to(device)
             output = model(bow_vectors)
             acc += accuracy(output, labels)

@@ -8,5 +8,5 @@ else:
 
 
 BATCH_SIZE = 500
-epochs = 10
+epochs = 1
 lr = 1e-3
