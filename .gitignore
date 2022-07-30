@@ -18,3 +18,4 @@ __pycache__/
 .DS_Store
 .data/
 mini_wiki_cats.jsonl
+experimental_results.txt
